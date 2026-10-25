@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0709">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>PierCount</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0709'/%3E%3Ccircle cx='32' cy='34' r='16' fill='none' stroke='%23ff4fa3' stroke-width='5'/%3E%3Ccircle cx='32' cy='16' r='6' fill='%23ff4fa3'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-title" content="PierCount">
+<style>
+  /* versione installabile: spazio per notch e barra di stato */
+  header { padding-top: calc(22px + env(safe-area-inset-top, 0px)); }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Una colonna stretta: barra in alto, riepilogo, schede, lista compatta. Look nero lucido con rosa. */
+  :root {
+    --bg: #09070a;
+    --glass: rgba(255, 240, 248, .045);
+    --glass-hi: rgba(255, 240, 248, .09);
+    --edge: rgba(255, 200, 225, .10);
+    --text: #f7edf2;
+    --muted: #9c8792;
+    --pink: #ff4fa3;
+    --pink-hi: #ff8ec4;
+    --pink-lo: #d42a7c;
+    --on-pink: #1a0610;
+    --warn: #ffb35c;
+    --danger: #ff5c72;
+    --ok: #8fe3b0;
+    --font: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --gothic: "UnifrakturMaguntia", "Old English Text MT", Georgia, serif;
+    --r: 16px;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background:
+      radial-gradient(900px 420px at 50% -180px, rgba(255, 79, 163, .22), transparent 70%),
+      var(--bg);
+    background-attachment: fixed;
+    color: var(--text);
+    font: 15px/1.4 var(--font);
+    min-height: 100vh;
+    padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+    -webkit-tap-highlight-color: transparent;
+  }
+  .wrap { max-width: 640px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+  .glass {
+    background: linear-gradient(180deg, var(--glass-hi), var(--glass));
+    border: 1px solid var(--edge);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 10px 30px rgba(0, 0, 0, .35);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  }
+
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 22px 16px; }
+  .logo {
+    font-family: var(--gothic); font-weight: 400; font-size: 40px; line-height: 1; margin: 0;
+    background: linear-gradient(180deg, #ffd1e8 0%, var(--pink) 55%, var(--pink-lo) 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 14px rgba(255, 79, 163, .35));
+  }
+  .sync { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; color: var(--muted); }
+  .sync::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .sync.ok::before { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .sync.err { color: var(--danger); }
+  .sync.err::before { background: var(--danger); }
+
+  .icon-round {
+    width: 42px; height: 42px; border-radius: 50%; flex: none; cursor: pointer;
+    color: var(--text); font-size: 18px; display: grid; place-items: center;
+  }
+
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); border-radius: var(--r); margin-bottom: 14px; }
+  .stat { padding: 12px 8px; text-align: center; }
+  .stat + .stat { border-left: 1px solid var(--edge); }
+  .stat b { display: block; font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .stat.warn b { color: var(--warn); }
+
+  .tabs { display: flex; padding: 4px; border-radius: 999px; margin-bottom: 12px; }
+  .tab {
+    flex: 1; border: 0; background: transparent; color: var(--muted); cursor: pointer;
+    font: 600 14px var(--font); padding: 10px; border-radius: 999px; transition: color .2s;
+  }
+  .tab.active, .gloss, .btn.gloss {
+    color: var(--on-pink);
+    background: linear-gradient(180deg, var(--pink-hi) 0%, var(--pink) 50%, var(--pink-lo) 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 4px 16px rgba(255, 79, 163, .35);
+  }
+
+  .toolbar { display: flex; gap: 8px; margin-bottom: 10px; }
+  .toolbar input { flex: 1; min-width: 0; }
+  .toolbar select { flex: 0 0 auto; width: auto; max-width: 42%; }
+  input, select {
+    background: rgba(255, 255, 255, .04); color: var(--text); border: 1px solid var(--edge);
+    border-radius: 12px; padding: 10px 12px; font: inherit; width: 100%;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--pink); box-shadow: 0 0 0 3px rgba(255, 79, 163, .2); }
+  button:focus-visible { outline: 2px solid var(--pink-hi); outline-offset: 2px; }
+  label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 5px; }
+
+  .chips { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 14px; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: none; border: 1px solid var(--edge); background: rgba(255, 255, 255, .03); color: var(--muted);
+    padding: 6px 12px; border-radius: 999px; font: 500 13px var(--font); cursor: pointer; white-space: nowrap;
+  }
+  .chip.active { border-color: rgba(255, 79, 163, .6); color: var(--pink-hi); background: rgba(255, 79, 163, .14); }
+
+  .group { margin-bottom: 18px; }
+  .group-head { display: flex; justify-content: space-between; align-items: baseline; padding: 0 4px 6px; }
+  .group-head h2 { margin: 0; font-size: 13px; font-weight: 600; color: var(--pink-hi); text-transform: uppercase; letter-spacing: .08em; }
+  .group-head span { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .rows { border-radius: var(--r); overflow: hidden; }
+
+  .item { display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 14px; position: relative; }
+  .item + .item { border-top: 1px solid var(--edge); }
+  .item::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: transparent; }
+  .item.low::before { background: var(--warn); }
+  .item.zero::before { background: var(--danger); }
+  .item .info { flex: 1; min-width: 0; cursor: pointer; }
+  .item .title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .sub { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .item .sub .bad { color: var(--danger); }
+
+  .counter { display: flex; align-items: center; gap: 2px; flex: none; }
+  .counter output { min-width: 34px; text-align: center; font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .item.low output { color: var(--warn); }
+  .item.zero output { color: var(--danger); }
+  .round {
+    width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--edge); cursor: pointer;
+    background: linear-gradient(180deg, rgba(255, 255, 255, .10), rgba(255, 255, 255, .02));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12);
+    color: var(--text); font-size: 18px; line-height: 1; display: grid; place-items: center;
+  }
+  .round.plus { color: var(--pink-hi); }
+  .round:active { transform: scale(.92); }
+
+  .empty { text-align: center; color: var(--muted); padding: 36px 16px; border-radius: var(--r); }
+  .empty b { display: block; color: var(--text); margin-bottom: 4px; }
+
+  .btn {
+    border: 1px solid var(--edge); background: rgba(255, 255, 255, .05); color: var(--text);
+    border-radius: 12px; padding: 10px 16px; font: 600 14px var(--font); cursor: pointer;
+  }
+  .btn.gloss { border-color: transparent; }
+  .btn.danger { color: var(--danger); border-color: rgba(255, 92, 114, .4); background: transparent; }
+  .btn.ghost { background: transparent; color: var(--muted); }
+
+  .fab {
+    position: fixed; right: calc(20px + env(safe-area-inset-right, 0px)); bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    width: 58px; height: 58px; border-radius: 50%; border: 0; font-size: 30px; font-weight: 300; cursor: pointer;
+  }
+
+  dialog {
+    border: 1px solid var(--edge); border-radius: 20px; padding: 0; color: var(--text);
+    background: linear-gradient(180deg, #221720, #140e13);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 20px 60px rgba(0, 0, 0, .6);
+    width: min(480px, calc(100vw - 32px));
+  }
+  dialog::backdrop { background: rgba(5, 2, 4, .6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+  .dlg-head { padding: 18px 20px 4px; font-size: 18px; font-weight: 700; }
+  .dlg-body { padding: 14px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-height: 65vh; overflow-y: auto; }
+  .dlg-body .full { grid-column: 1 / -1; }
+  .dlg-foot { padding: 6px 20px 18px; display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  .dlg-foot .spacer { flex: 1; }
+  .section-title { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin: 4px 0 8px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn-row .btn { flex: 1; }
+
+  .cat-list { display: flex; flex-direction: column; gap: 6px; }
+  .cat-row { display: flex; gap: 6px; align-items: center; }
+  .cat-row input { flex: 1; min-width: 0; }
+  .icon-btn { border: 1px solid var(--edge); background: rgba(255, 255, 255, .04); color: var(--muted); border-radius: 10px; width: 38px; height: 38px; cursor: pointer; flex: none; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(16px);
+    padding: 10px 18px; border-radius: 999px; opacity: 0; transition: .25s; pointer-events: none; font-size: 14px;
+    background: rgba(34, 23, 32, .92); border: 1px solid var(--edge); color: var(--text);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 480px) {
+    .dlg-body { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1 class="logo">PierCount</h1>
+      <div class="sync" id="sync">Salvato su questo dispositivo</div>
+    </div>
+    <button class="icon-round glass" id="settingsBtn" aria-label="Impostazioni">⚙</button>
+  </header>
+
+  <section class="stats glass" id="stats"></section>
+
+  <nav class="tabs glass">
+    <button class="tab active" data-tab="jewels">Gioielli</button>
+    <button class="tab" data-tab="needles">Aghi</button>
+  </nav>
+
+  <div class="toolbar">
+    <input id="search" type="search" placeholder="Cerca">
+    <select id="sizeFilter" aria-label="Spessore"><option value="">Spessore</option></select>
+  </div>
+
+  <div class="chips" id="chips"></div>
+  <main id="list"></main>
+  <input type="file" id="importFile" accept="application/json" hidden>
+</div>
+
+<button class="fab gloss" id="addBtn" aria-label="Aggiungi">+</button>
+
+<dialog id="itemDlg">
+  <form method="dialog" id="itemForm">
+    <div class="dlg-head" id="dlgTitle">Nuovo gioiello</div>
+    <div class="dlg-body" id="dlgBody"></div>
+    <div class="dlg-foot">
+      <button type="button" class="btn danger" id="delBtn">Elimina</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn ghost" id="cancelBtn">Annulla</button>
+      <button type="submit" class="btn gloss">Salva</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="catDlg">
+  <form method="dialog">
+    <div class="dlg-head">Impostazioni</div>
+    <div class="dlg-body"><div class="full">
+      <div class="section-title">Categorie gioielli</div>
+      <div class="cat-list" id="catList"></div>
+      <div class="cat-row" style="margin-top:10px">
+        <input id="newCat" placeholder="Nuova categoria">
+        <button type="button" class="btn" id="addCat">Aggiungi</button>
+      </div>
+      <div class="hint">Una categoria in uso non può essere eliminata.</div>
+    </div>
+    <div class="full">
+      <div class="section-title">Scorta bassa sotto</div>
+      <input id="lowStock" type="number" min="0" inputmode="numeric">
+    </div>
+    <div class="full">
+      <div class="section-title">Backup</div>
+      <div class="btn-row">
+        <button type="button" class="btn" id="exportBtn">Esporta</button>
+        <button type="button" class="btn" id="importBtn">Importa</button>
+      </div>
+    </div></div>
+    <div class="dlg-foot"><button class="btn gloss">Fatto</button></div>
+  </form>
+</dialog>
+
+<dialog id="confirmDlg">
+  <form method="dialog">
+    <div class="dlg-head" id="confirmMsg"></div>
+    <div class="dlg-foot">
+      <button class="btn ghost" value="no">Annulla</button>
+      <button class="btn danger" value="yes" id="confirmYes">Conferma</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const KEY = "piercount.v1";
+  const GAUGES = [
+    ["20G", 0.8], ["18G", 1.0], ["16G", 1.2], ["14G", 1.6], ["12G", 2.0],
+    ["10G", 2.5], ["8G", 3.0], ["6G", 4.0], ["4G", 5.0], ["2G", 6.0], ["0G", 8.0], ["00G", 10.0]
+  ];
+  const gaugeLabel = g => { const x = GAUGES.find(a => a[0] === g); return x ? `${g} · ${x[1]} mm` : g; };
+  const gaugeOrder = g => { const i = GAUGES.findIndex(a => a[0] === g); return i < 0 ? 999 : i; };
+  const DEFAULT_CATS = ["Labret", "Barbell", "Banana", "Anello / Hoop", "Segmentato", "Clicker", "Circular / Horseshoe", "Nostril / Naso", "Plug / Tunnel", "Surface / Dermal"];
+  const MATERIALS = ["Titanio", "Acciaio chirurgico", "Oro", "Niobio", "Bioplast / PTFE", "Vetro", "Altro"];
+  const NEEDLE_TYPES = ["Ago cavo", "Catetere", "Altro"];
+
+  const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+
+  let state;
+  function normalize(d) {
+    if (!d || !Array.isArray(d.jewels)) d = { jewels: [] };
+    d.needles ||= [];
+    d.categories ||= [...DEFAULT_CATS];
+    d.lowStock ??= 3;
+    // categorie usate dai gioielli ma assenti dall'elenco
+    d.jewels.forEach(j => { if (j.category && !d.categories.includes(j.category)) d.categories.push(j.category); });
+    return d;
+  }
+  function load() {
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(KEY)); } catch {}
+    state = normalize(d);
+  }
+  // Copia locale sempre; nell'app pubblicata anche nel tuo account (sincronizzata tra dispositivi).
+  let docRef = null, saveTimer = null, saving = false, dirty = false;
+  function cacheLocal() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch {} }
+  // Ogni modifica porta un orario: all'apertura vince la copia più recente (telefono o account).
+  function save() {
+    state.updatedAt = Date.now();
+    cacheLocal();
+    if (!docRef) return;
+    dirty = true; setSync("", "Salvataggio…");
+    clearTimeout(saveTimer); flush();
+  }
+  async function flush() {
+    if (!docRef || saving || !dirty) return;
+    saving = true; dirty = false;
+    let retry = false;
+    try {
+      await docRef.set(JSON.parse(JSON.stringify(state)));
+      setSync("ok", "☁ Sincronizzato");
+    } catch (e) {
+      const code = e && e.code;
+      if (code === "unavailable" || code === "resource_exhausted") dirty = retry = true;
+      setSync("err", code === "quota_exceeded" ? "Spazio esaurito: elimina qualche articolo" : "Salvataggio non riuscito, solo su questo dispositivo");
+    } finally {
+      saving = false;
+      // modifiche arrivate durante la scrittura: subito; errore temporaneo: tra poco
+      if (dirty) saveTimer = setTimeout(flush, retry ? 2000 : 0);
+    }
+  }
+  function setSync(cls, text) { const el = $("#sync"); el.className = "sync " + cls; el.textContent = text; }
+
+  async function connectCloud() {
+    if (!window.claude || !window.claude.use) return;
+    const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+    const id = user && await user.id();
+    if (!db || !id) return;
+    docRef = db.doc("data/users/" + id + "/inventory");
+    docRef.onSnapshot(snap => {
+      if (snap.metadata.hasPendingWrites || dirty || saving) return;
+      const remote = snap.exists ? snap.data() : null;
+      const localTime = state.updatedAt || 0, remoteTime = (remote && remote.updatedAt) || 0;
+      if (localTime > remoteTime) {
+        // il telefono ha modifiche più recenti che non erano ancora arrivate nell'account
+        dirty = true; flush();
+        return;
+      }
+      if (remote) {
+        state = normalize(structuredClone(remote));
+        cacheLocal(); render();
+      }
+      setSync("ok", "☁ Sincronizzato");
+    }, () => setSync("err", "Sincronizzazione interrotta, ricarica la pagina"));
+  }
+  // se l'app viene chiusa o messa in background, prova a scrivere subito
+  addEventListener("visibilitychange", () => { if (document.hidden) { cacheLocal(); flush(); } });
+  addEventListener("pagehide", () => { cacheLocal(); flush(); });
+
+  function askConfirm(msg, yes = "Conferma") {
+    const d = $("#confirmDlg");
+    $("#confirmMsg").textContent = msg; $("#confirmYes").textContent = yes;
+    d.returnValue = "";
+    d.showModal();
+    return new Promise(res => d.addEventListener("close", () => res(d.returnValue === "yes"), { once: true }));
+  }
+
+  const ui = { tab: "jewels", cat: "", size: "", q: "" };
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  function toast(msg) {
+    const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), 1800);
+  }
+
+  const sizeText = it => [it.gauge && gaugeLabel(it.gauge), it.length && `${it.length} mm`].filter(Boolean).join(" · ");
+  function itemTitle(it) {
+    if (ui.tab === "needles") return sizeText(it) || it.type || "Ago";
+    return it.name || sizeText(it) || it.category;
+  }
+  function itemSub(it) {
+    const parts = ui.tab === "needles"
+      ? [it.type, it.brand]
+      : [it.name && sizeText(it), it.material, it.color];
+    if (it.expiry) {
+      const exp = new Date(it.expiry), txt = "scad. " + exp.toLocaleDateString("it-IT");
+      parts.push(exp < new Date() ? `<span class="bad">${txt}</span>` : txt);
+    }
+    if (it.notes) parts.push(it.notes);
+    return parts.filter(Boolean).map(x => x.startsWith("<span") ? x : esc(x)).join(" · ");
+  }
+
+  function stockClass(q) { return q <= 0 ? "zero" : q <= state.lowStock ? "low" : ""; }
+
+  function renderStats() {
+    const sum = a => a.reduce((s, x) => s + (+x.qty || 0), 0);
+    const low = [...state.jewels, ...state.needles].filter(x => (+x.qty || 0) <= state.lowStock).length;
+    $("#stats").innerHTML = `
+      <div class="stat"><b>${sum(state.jewels)}</b><span>Gioielli</span></div>
+      <div class="stat"><b>${sum(state.needles)}</b><span>Aghi</span></div>
+      <div class="stat ${low ? "warn" : ""}"><b>${low}</b><span>Da riordinare</span></div>`;
+  }
+
+  function renderFilters() {
+    const items = state[ui.tab];
+    const sizes = [...new Set(items.map(x => x.gauge).filter(Boolean))].sort((a, b) => gaugeOrder(a) - gaugeOrder(b));
+    if (ui.size && !sizes.includes(ui.size)) ui.size = "";
+    $("#sizeFilter").innerHTML = `<option value="">Spessore</option>` +
+      sizes.map(g => `<option value="${esc(g)}" ${g === ui.size ? "selected" : ""}>${esc(gaugeLabel(g))}</option>`).join("");
+
+    const chips = $("#chips");
+    if (ui.tab === "jewels") {
+      // solo le categorie che hanno articoli, per non affollare la barra
+      const used = state.categories.filter(c => state.jewels.some(j => j.category === c));
+      chips.hidden = used.length < 2;
+      chips.innerHTML = `<button class="chip ${ui.cat ? "" : "active"}" data-cat="">Tutte</button>` +
+        used.map(c => `<button class="chip ${ui.cat === c ? "active" : ""}" data-cat="${esc(c)}">${esc(c)}</button>`).join("");
+    } else {
+      chips.hidden = true;
+    }
+  }
+
+  function filtered() {
+    const q = ui.q.trim().toLowerCase();
+    return state[ui.tab].filter(it => {
+      if (ui.tab === "jewels" && ui.cat && it.category !== ui.cat) return false;
+      if (ui.size && it.gauge !== ui.size) return false;
+      if (q) {
+        const hay = [it.name, it.category, it.material, it.color, it.notes, it.gauge, it.length, it.type, it.brand].join(" ").toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }
+
+  function sortItems(a) {
+    return a.sort((x, y) => gaugeOrder(x.gauge) - gaugeOrder(y.gauge) || (parseFloat(x.length) || 0) - (parseFloat(y.length) || 0));
+  }
+
+  function itemHTML(it) {
+    const q = +it.qty || 0, sc = stockClass(q), sub = itemSub(it);
+    return `<div class="item ${sc}" data-id="${it.id}">
+      <div class="info" data-edit>
+        <div class="title">${esc(itemTitle(it))}</div>
+        ${sub ? `<div class="sub">${sub}</div>` : ""}
+      </div>
+      <div class="counter">
+        <button class="round" data-step="-1" aria-label="Togli uno">−</button>
+        <output>${q}</output>
+        <button class="round plus" data-step="1" aria-label="Aggiungi uno">+</button>
+      </div>
+    </div>`;
+  }
+
+  function renderList() {
+    const items = sortItems(filtered());
+    const list = $("#list");
+    if (!items.length) {
+      const none = !state[ui.tab].length;
+      list.innerHTML = `<div class="empty glass">${none
+        ? `<b>${ui.tab === "jewels" ? "Nessun gioiello" : "Nessun ago"}</b>Tocca + per aggiungere il primo.`
+        : "<b>Nessun risultato</b>Prova a cambiare ricerca o filtri."}</div>`;
+      return;
+    }
+    const groups = new Map();
+    for (const it of items) {
+      const key = ui.tab === "jewels" ? it.category : (it.gauge ? gaugeLabel(it.gauge) : "Senza misura");
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(it);
+    }
+    let keys = [...groups.keys()];
+    if (ui.tab === "jewels") keys.sort((a, b) => state.categories.indexOf(a) - state.categories.indexOf(b));
+    else keys.sort((a, b) => gaugeOrder(groups.get(a)[0].gauge) - gaugeOrder(groups.get(b)[0].gauge));
+    list.innerHTML = keys.map(k => {
+      const arr = groups.get(k), tot = arr.reduce((s, x) => s + (+x.qty || 0), 0);
+      return `<section class="group"><div class="group-head"><h2>${esc(k)}</h2><span>${tot} pz</span></div><div class="rows glass">${arr.map(itemHTML).join("")}</div></section>`;
+    }).join("");
+  }
+
+  function render() { renderStats(); renderFilters(); renderList(); }
+
+  // ---- item dialog ----
+  let editingId = null;
+  const opt = (arr, v, blank) => (blank ? `<option value="">${blank}</option>` : "") + arr.map(x => {
+    const [val, lab] = Array.isArray(x) ? x : [x, x];
+    return `<option value="${esc(val)}" ${val === v ? "selected" : ""}>${esc(lab)}</option>`;
+  }).join("");
+
+  function openItem(it) {
+    editingId = it ? it.id : null;
+    const isJ = ui.tab === "jewels";
+    const v = it || { category: ui.cat || state.categories[0], gauge: ui.size || "16G", qty: 1, material: isJ ? "Titanio" : "", type: "Ago cavo" };
+    const gaugeOpts = GAUGES.map(([g, mm]) => [g, `${g} · ${mm} mm`]);
+    $("#dlgTitle").textContent = (it ? "Modifica " : "Nuovo ") + (isJ ? "gioiello" : "ago");
+    $("#dlgBody").innerHTML = isJ ? `
+      <div><label>Categoria</label><select name="category" required>${opt(state.categories, v.category)}</select></div>
+      <div><label>Spessore</label><select name="gauge">${opt(gaugeOpts, v.gauge)}</select></div>
+      <div><label>Lunghezza / diametro (mm)</label><input name="length" inputmode="decimal" value="${esc(v.length)}" placeholder="es. 8"></div>
+      <div><label>Quantità</label><input name="qty" type="number" min="0" inputmode="numeric" value="${esc(v.qty)}" required></div>
+      <div><label>Materiale</label><select name="material">${opt(MATERIALS, v.material, "—")}</select></div>
+      <div><label>Colore / finitura</label><input name="color" value="${esc(v.color)}" placeholder="es. nero, rosa, opale"></div>
+      <div class="full"><label>Nome (opzionale)</label><input name="name" value="${esc(v.name)}" placeholder="es. Labret pipistrello"></div>
+      <div class="full"><label>Note</label><input name="notes" value="${esc(v.notes)}" placeholder="filettatura interna, push-pin…"></div>`
+    : `
+      <div><label>Spessore</label><select name="gauge">${opt(gaugeOpts, v.gauge)}</select></div>
+      <div><label>Tipo</label><select name="type">${opt(NEEDLE_TYPES, v.type)}</select></div>
+      <div><label>Lunghezza (mm)</label><input name="length" inputmode="decimal" value="${esc(v.length)}" placeholder="es. 50"></div>
+      <div><label>Quantità</label><input name="qty" type="number" min="0" inputmode="numeric" value="${esc(v.qty)}" required></div>
+      <div><label>Marca / lotto</label><input name="brand" value="${esc(v.brand)}"></div>
+      <div><label>Scadenza</label><input name="expiry" type="date" value="${esc(v.expiry)}"></div>
+      <div class="full"><label>Note</label><input name="notes" value="${esc(v.notes)}"></div>`;
+    $("#delBtn").style.display = it ? "" : "none";
+    $("#itemDlg").showModal();
+  }
+
+  $("#itemForm").addEventListener("submit", e => {
+    const data = Object.fromEntries(new FormData(e.target).entries());
+    data.qty = Math.max(0, parseInt(data.qty, 10) || 0);
+    const target = editingId && state[ui.tab].find(x => x.id === editingId);
+    if (target) Object.assign(target, data);
+    else state[ui.tab].push({ id: uid(), ...data });
+    save(); render(); toast(target ? "Salvato" : "Aggiunto ✦");
+  });
+  $("#cancelBtn").onclick = () => $("#itemDlg").close();
+  $("#delBtn").onclick = async () => {
+    if (!editingId) return;
+    $("#itemDlg").close();
+    if (!await askConfirm("Eliminare questo articolo?", "Elimina")) return;
+    state[ui.tab] = state[ui.tab].filter(x => x.id !== editingId);
+    save(); render(); toast("Eliminato");
+  };
+
+  // ---- list interactions ----
+  $("#list").addEventListener("click", e => {
+    const row = e.target.closest(".item"); if (!row) return;
+    const it = state[ui.tab].find(x => x.id === row.dataset.id); if (!it) return;
+    const step = e.target.closest("[data-step]");
+    if (step) {
+      it.qty = Math.max(0, (+it.qty || 0) + +step.dataset.step);
+      save();
+      row.querySelector("output").textContent = it.qty;
+      renderStats(); renderFilters();
+      clearTimeout(renderList._t); renderList._t = setTimeout(renderList, 900);
+      if (navigator.vibrate) navigator.vibrate(8);
+    } else if (e.target.closest("[data-edit]")) openItem(it);
+  });
+
+  document.querySelectorAll(".tab").forEach(b => b.onclick = () => {
+    document.querySelectorAll(".tab").forEach(x => x.classList.toggle("active", x === b));
+    ui.tab = b.dataset.tab; ui.cat = ""; ui.size = ""; render();
+  });
+  $("#chips").addEventListener("click", e => {
+    const c = e.target.closest(".chip"); if (!c) return;
+    ui.cat = c.dataset.cat; render();
+  });
+  $("#sizeFilter").onchange = e => { ui.size = e.target.value; renderList(); };
+  $("#search").oninput = e => { ui.q = e.target.value; renderList(); };
+  $("#addBtn").onclick = () => openItem(null);
+
+  // ---- categories ----
+  function renderCats() {
+    $("#catList").innerHTML = state.categories.map((c, i) => `
+      <div class="cat-row">
+        <input value="${esc(c)}" data-i="${i}">
+        <button type="button" class="icon-btn" data-up="${i}" title="Su">↑</button>
+        <button type="button" class="icon-btn" data-del="${i}" title="Elimina">✕</button>
+      </div>`).join("");
+  }
+  $("#settingsBtn").onclick = () => { renderCats(); $("#lowStock").value = state.lowStock; $("#catDlg").showModal(); };
+  $("#lowStock").onchange = e => { state.lowStock = Math.max(0, parseInt(e.target.value, 10) || 0); save(); render(); };
+  $("#catList").addEventListener("change", e => {
+    const i = e.target.dataset.i; if (i == null) return;
+    const old = state.categories[i], nu = e.target.value.trim();
+    if (!nu || (nu !== old && state.categories.includes(nu))) { e.target.value = old; return toast("Nome non valido"); }
+    state.categories[i] = nu;
+    state.jewels.forEach(j => { if (j.category === old) j.category = nu; });
+    if (ui.cat === old) ui.cat = nu;
+    save(); render();
+  });
+  $("#catList").addEventListener("click", e => {
+    const up = e.target.dataset.up, del = e.target.dataset.del;
+    if (up != null && +up > 0) {
+      const c = state.categories; [c[up - 1], c[up]] = [c[up], c[up - 1]];
+    } else if (del != null) {
+      const c = state.categories[del];
+      if (state.jewels.some(j => j.category === c)) return toast("Categoria in uso");
+      state.categories.splice(del, 1);
+      if (ui.cat === c) ui.cat = "";
+    } else return;
+    save(); renderCats(); render();
+  });
+  $("#addCat").onclick = () => {
+    const v = $("#newCat").value.trim();
+    if (!v || state.categories.includes(v)) return toast("Nome non valido");
+    state.categories.push(v); $("#newCat").value = "";
+    save(); renderCats(); render();
+  };
+
+  // ---- backup ----
+  $("#exportBtn").onclick = async () => {
+    const json = JSON.stringify(state, null, 2);
+    const filename = `piercount-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    const downloads = window.claude && window.claude.use ? await claude.use("downloads") : null;
+    if (downloads) {
+      try { if (await downloads.save({ filename, data: json }) !== "declined") toast("Backup esportato"); }
+      catch (e) { if (!e || e.code !== "declined") toast("Esportazione non riuscita"); }
+      return;
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([json], { type: "application/json" }));
+    a.download = filename;
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
+  $("#importBtn").onclick = () => $("#importFile").click();
+  $("#importFile").onchange = async e => {
+    const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    try {
+      const d = JSON.parse(await f.text());
+      if (!Array.isArray(d.jewels) || !Array.isArray(d.needles)) throw 0;
+      if (!await askConfirm("Sostituire l'inventario attuale con il backup?", "Sostituisci")) return;
+      state = normalize(d); ui.cat = ""; ui.size = ""; save(); render(); toast("Backup importato");
+    } catch { toast("File non valido"); }
+  };
+
+  load(); render(); connectCloud();
+})();
+</script>
+</body>
+</html>
