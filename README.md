@@ -2,7 +2,7 @@
 
 Inventario di gioielli e aghi per piercing: gioielli divisi per categoria e spessore, aghi per spessore, contatori +/−, avvisi di scorta bassa e backup.
 
-**Apri l'app:** https://s7ormxv3nto-coder.github.io/piercount/
+**Apri l'app:** https://s7ormxv3nto-coder.github.io/Piercount/
 
 ## Metterla nella Home dell'iPhone
 1. Apri il link in **Safari**.
